@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "TripQuote"
+description = "A travel operator discovery and road-trip planning platform where travelers build multi-destination itineraries, understand route distances and exploration areas, and connect with suitable local operators."
+version = "1.0.0"
+id = "artifacts/tripquote"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21950
+
+[services.development]
+run = "pnpm --filter @workspace/tripquote run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tripquote", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/tripquote/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21950"
+BASE_PATH = "/"

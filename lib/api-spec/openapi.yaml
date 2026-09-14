@@ -1,0 +1,428 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: TripQuote travel planning and operator discovery API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: trips
+    description: Customer trip planning
+  - name: operators
+    description: Travel operator discovery
+  - name: matching
+    description: Operator matching
+  - name: enquiries
+    description: Operator enquiries
+  - name: dashboard
+    description: Customer dashboard summaries
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /trips:
+    get:
+      operationId: listTrips
+      tags: [trips]
+      summary: List demo and saved trips
+      responses:
+        "200":
+          description: Trips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trip"
+    post:
+      operationId: createTrip
+      tags: [trips]
+      summary: Create a multi-destination trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripInput"
+      responses:
+        "201":
+          description: Created trip
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "400":
+          description: Invalid trip
+  /trips/{tripId}:
+    get:
+      operationId: getTrip
+      tags: [trips]
+      summary: Get a trip
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: Trip
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "404":
+          description: Trip not found
+  /trips/{tripId}/route:
+    get:
+      operationId: getTripRoute
+      tags: [trips]
+      summary: Calculate route and itinerary details
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: Route summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteSummary"
+  /operators:
+    get:
+      operationId: listOperators
+      tags: [operators]
+      summary: List travel operators
+      parameters:
+        - name: tripId
+          in: query
+          schema:
+            type: [string, "null"]
+      responses:
+        "200":
+          description: Operators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Operator"
+  /operators/{operatorId}:
+    get:
+      operationId: getOperator
+      tags: [operators]
+      summary: Get an operator profile
+      parameters:
+        - $ref: "#/components/parameters/OperatorId"
+      responses:
+        "200":
+          description: Operator profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operator"
+        "404":
+          description: Operator not found
+  /matching/operators:
+    get:
+      operationId: matchOperators
+      tags: [matching]
+      summary: Rank operators for a trip
+      parameters:
+        - name: tripId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ranked matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorMatch"
+  /enquiries:
+    post:
+      operationId: createEnquiry
+      tags: [enquiries]
+      summary: Send an enquiry to an operator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnquiryInput"
+      responses:
+        "201":
+          description: Enquiry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enquiry"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get customer dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+components:
+  parameters:
+    TripId:
+      name: tripId
+      in: path
+      required: true
+      schema:
+        type: string
+    OperatorId:
+      name: operatorId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    TripDestinationInput:
+      type: object
+      required: [destinationName, stayDays, roamingRadiusKm]
+      properties:
+        destinationName:
+          type: string
+          minLength: 1
+        stayDays:
+          type: integer
+          minimum: 1
+        roamingRadiusKm:
+          type: integer
+          minimum: 0
+        notes:
+          type: string
+    TripInput:
+      type: object
+      required: [startLocation, startDate, endDate, passengerCount, vehicleType, tripType, destinations]
+      properties:
+        startLocation:
+          type: string
+          minLength: 1
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        passengerCount:
+          type: integer
+          minimum: 1
+        vehicleType:
+          type: string
+        tripType:
+          type: string
+        specialRequirements:
+          type: string
+        destinations:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TripDestinationInput"
+    TripDestination:
+      allOf:
+        - $ref: "#/components/schemas/TripDestinationInput"
+        - type: object
+          required: [id, sequenceOrder]
+          properties:
+            id:
+              type: string
+            sequenceOrder:
+              type: integer
+    Trip:
+      type: object
+      required: [id, startLocation, startDate, endDate, passengerCount, vehicleType, tripType, destinations, status, createdAt]
+      properties:
+        id:
+          type: string
+        startLocation:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        passengerCount:
+          type: integer
+        vehicleType:
+          type: string
+        tripType:
+          type: string
+        specialRequirements:
+          type: string
+        destinations:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripDestination"
+        status:
+          type: string
+        totalRouteDistanceKm:
+          type: number
+        estimatedDriveTime:
+          type: string
+        createdAt:
+          type: string
+    RouteLeg:
+      type: object
+      required: [from, to, distanceKm, drivingTime]
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        distanceKm:
+          type: number
+        drivingTime:
+          type: string
+    RouteSummary:
+      type: object
+      required: [tripId, totalDistanceKm, totalDrivingTime, legs]
+      properties:
+        tripId:
+          type: string
+        totalDistanceKm:
+          type: number
+        totalDrivingTime:
+          type: string
+        legs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouteLeg"
+    OperatorVehicle:
+      type: object
+      required: [type, label, seats, ac]
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        seats:
+          type: integer
+        ac:
+          type: boolean
+    Operator:
+      type: object
+      required: [id, businessName, operatorType, description, city, state, yearsExperience, verificationStatus, rating, totalReviews, maxTripDistanceKm, maxTripDurationDays, roamingCapabilityKm, vehicles, serviceAreas, preferredDestinations, tripTypes]
+      properties:
+        id:
+          type: string
+        businessName:
+          type: string
+        operatorType:
+          type: string
+        description:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        yearsExperience:
+          type: integer
+        verificationStatus:
+          type: string
+        rating:
+          type: number
+        totalReviews:
+          type: integer
+        maxTripDistanceKm:
+          type: integer
+        maxTripDurationDays:
+          type: integer
+        roamingCapabilityKm:
+          type: integer
+        vehicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorVehicle"
+        serviceAreas:
+          type: array
+          items:
+            type: string
+        preferredDestinations:
+          type: array
+          items:
+            type: string
+        tripTypes:
+          type: array
+          items:
+            type: string
+        phone:
+          type: string
+        whatsapp:
+          type: string
+    OperatorMatch:
+      type: object
+      required: [operator, score, label, reasons]
+      properties:
+        operator:
+          $ref: "#/components/schemas/Operator"
+        score:
+          type: integer
+        label:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+    EnquiryInput:
+      type: object
+      required: [operatorId, tripId, message]
+      properties:
+        operatorId:
+          type: string
+        tripId:
+          type: string
+        message:
+          type: string
+          minLength: 1
+    Enquiry:
+      allOf:
+        - $ref: "#/components/schemas/EnquiryInput"
+        - type: object
+          required: [id, status, createdAt]
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+            createdAt:
+              type: string
+    DashboardSummary:
+      type: object
+      required: [activeTripCount, enquiryCount, savedOperatorCount, nextTrip]
+      properties:
+        activeTripCount:
+          type: integer
+        enquiryCount:
+          type: integer
+        savedOperatorCount:
+          type: integer
+        nextTrip:
+          type: ["string", "null"]
+
